@@ -1,7 +1,6 @@
-
 import React, { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import PageLayout from "@/components/Layout/PageLayout";
 import BookingForm from "@/components/Bookings/BookingForm";
@@ -9,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Phone, ArrowLeft, Calendar, Users } from "lucide-react";
 import { api } from "@/utils/api";
-import { Hotel, Booking, ApiResponse, BookingFormData } from "@/types";
+import { Booking, BookingFormData } from "@/types";
 import { useAuth } from "@/context/AuthContext";
+import { useHotel } from "@/hooks/useHotel";
+import { useMockData } from "@/utils/useMockData";
+import { useBookings } from "@/hooks/useBookings";
 
 const HotelDetailPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,38 +20,13 @@ const HotelDetailPage = () => {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const [showBookingForm, setShowBookingForm] = useState(false);
-
-  // Fetch hotel details
-  const {
-    data: hotelData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["hotel", id],
-    queryFn: () => api.get<Hotel>(`/hotels/${id}`),
-    enabled: !!id,
-  });
-
-  // Create booking mutation
-  const createBookingMutation = useMutation({
-    mutationFn: (bookingData: BookingFormData) => 
-      api.post<Booking>("/bookings", bookingData),
-    onSuccess: () => {
-      toast.success("Booking created successfully!");
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      setShowBookingForm(false);
-      navigate("/dashboard");
-    },
-    onError: (error) => {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Failed to create booking. Please try again.");
-      }
-    }
-  });
-
-  const hotel = hotelData?.data;
+  const { isMockEnabled, mockApi } = useMockData();
+  
+  // Use the useHotel hook instead of direct API call
+  const { hotel, isLoading, error } = useHotel(id);
+  
+  // Use the useBookings hook for booking operations
+  const { createBooking, isCreating } = useBookings();
 
   const handleBookNow = () => {
     if (!isAuthenticated) {
@@ -62,7 +39,13 @@ const HotelDetailPage = () => {
   };
 
   const handleBookingSubmit = async (data: BookingFormData) => {
-    createBookingMutation.mutate(data);
+    createBooking(data, {
+      onSuccess: () => {
+        toast.success("Booking created successfully!");
+        setShowBookingForm(false);
+        navigate("/dashboard");
+      }
+    });
   };
 
   // Display loading state
@@ -183,7 +166,7 @@ const HotelDetailPage = () => {
                 <BookingForm
                   hotelId={hotel._id}
                   onSubmit={handleBookingSubmit}
-                  isLoading={createBookingMutation.isPending}
+                  isLoading={isCreating}
                 />
               ) : (
                 <>

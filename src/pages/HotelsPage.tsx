@@ -1,12 +1,10 @@
 
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/utils/api";
 import PageLayout from "@/components/Layout/PageLayout";
 import HotelList from "@/components/Hotels/HotelList";
 import SearchInput from "@/components/UI/SearchInput";
-import { Hotel, ApiResponse } from "@/types";
+import { useHotels } from "@/hooks/useHotels";
 
 const HotelsPage = () => {
   const location = useLocation();
@@ -15,18 +13,11 @@ const HotelsPage = () => {
   
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   
-  // Fetch hotels
-  const {
-    data,
-    isLoading,
-    refetch
-  } = useQuery({
-    queryKey: ["hotels"],
-    queryFn: () => api.get<Hotel[]>("/hotels"),
-  });
+  // Use the useHotels hook instead of direct API call
+  const { hotels, isLoading, refetch } = useHotels();
 
   // Filter hotels based on search term
-  const filteredHotels = data?.data.filter((hotel) => {
+  const filteredHotels = hotels.filter((hotel) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       hotel.name.toLowerCase().includes(searchLower) ||
